@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新自动爬塔 - 英雄向上</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap');
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #1a202c;
+            color: #fff;
+            overflow: hidden;
+        }
+        .tower-container {
+            position: relative;
+            width: 600px;
+            height: 600px;
+            background-image: url('https://i.imgur.com/8vZcQYJ.jpg');
+            background-size: cover;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+        .floor {
+            position: absolute;
+            width: 100%;
+            height: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .hero {
+            position: absolute;
+            width: 30px;
+            height: 50px;
+            background-color: #f59e0b;
+            border-radius: 5px;
+            transition: bottom 0.5s ease-in-out;
+            bottom: 0;
+        }
+        .hero-spawn {
+            animation: spawn 0.5s ease-out;
+        }
+        @keyframes spawn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .new-image {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background-image: url('https://i.imgur.com/J3x7pQH.png');
+            background-size: cover;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <!-- 游戏标题 -->
+    <header class="bg-gray-800 py-3 text-center shadow-lg">
+        <h1 class="text-2xl font-bold text-yellow-400">新自动爬塔</h1>
+        <p class="text-sm text-gray-300">英雄每5秒自动生成并向上爬塔</p>
+    </header>
+    <main class="flex-1 flex flex-col lg:flex-row p-4">
+        <!-- 左侧 - 游戏区域 -->
+        <div class="lg:w-2/3 flex justify-center mb-6 lg:mb-0">
+            <div class="tower-container rounded-lg border-2 border-gray-600 shadow-xl">
+                <!-- 塔层将在这里动态生成 -->
+                <div id="tower-floors"></div>
+                <!-- 英雄将在这里动态生成 -->
+                <div id="hero-container"></div>
+                <!-- 新增图片 -->
+                <div class="new-image"></div>
+            </div>
+        </div>
+        <!-- 右侧 - 控制面板 -->
+        <div class="lg:w-1/3 bg-gray-700 rounded-lg p-4 shadow-lg border border-gray-600">
+            <div class="mb-4">
+                <h2 class="text-lg font-semibold mb-2 text-yellow-300">游戏统计</h2>
+                <div class="flex justify-between mb-1">
+                    <span>当前最高层数:</span>
+                    <span id="current-floor" class="font-bold">0</span>
+                </div>
+                <div class="flex justify-between mb-1">
+                    <span>英雄数量:</span>
+                    <span id="hero-count" class="font-bold">0</span>
+                </div>
+            </div>
+            <div class="mb-4">
+                <h2 class="text-lg font-semibold mb-2 text-yellow-300">游戏控制</h2>
+                <button id="pause-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mr-2">暂停</button>
+                <button id="reset-btn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">重置</button>
+            </div>
+        </div>
+    </main>
+    <!-- 底部信息栏 -->
+    <footer class="bg-gray-800 py-2 px-4 text-center text-sm">
+        <p>新自动爬塔游戏 - 英雄每5秒自动生成并向上爬塔</p>
+    </footer>
+    <script>
+        const gameState = {
+            currentFloor: 0,
+            heroes: [],
+            timer: null,
+            isPaused: false,
+            spawnInterval: null
+        };
+
+        function initGame() {
+            createTowerFloors();
+            gameState.spawnInterval = setInterval(spawnHero, 5000);
+            gameState.timer = setInterval(updateUI, 1000);
+            
+            document.getElementById('pause-btn').addEventListener('click', togglePause);
+            document.getElementById('reset-btn').addEventListener('click', resetGame);
+        }
+
+        function createTowerFloors() {
+            const container = document.getElementById('tower-floors');
+            for(let i=0; i<50; i++) {
+                const floor = document.createElement('div');
+                floor.className = 'floor';
+                floor.style.bottom = `${i*120}px`;
+                container.appendChild(floor);
+            }
+        }
+
+        function spawnHero() {
+            const hero = document.createElement('div');
+            hero.className = 'hero hero-spawn';
+            hero.style.left = `${Math.random()*500}px`;
+            document.getElementById('hero-container').appendChild(hero);
+            gameState.heroes.push({
+                element: hero,
+                currentFloor: 1
+            });
+        }
+
+        function updateUI() {
+            if(gameState.heroes.length > 0) {
+                const maxFloor = Math.max(...gameState.heroes.map(h => h.currentFloor));
+                document.getElementById('current-floor').textContent = maxFloor;
+                gameState.currentFloor = maxFloor;
+            }
+            document.getElementById('hero-count').textContent = gameState.heroes.length;
+            
+            // 更新英雄位置
+            gameState.heroes.forEach(hero => {
+                if(!gameState.isPaused && hero.currentFloor < 50) {
+                    hero.currentFloor++;
+                    hero.element.style.bottom = `${(hero.currentFloor-1)*12}px`;
+                }
+            });
+        }
+        
+        function togglePause() {
+            gameState.isPaused = !gameState.isPaused;
+            const btn = document.getElementById('pause-btn');
+            if(gameState.isPaused) {
+                btn.textContent = '继续';
+                btn.classList.remove('bg-blue-500');
+                btn.classList.add('bg-green-500');
+            } else {
+                btn.textContent = '暂停';
+                btn.classList.remove('bg-green-500');
+                btn.classList.add('bg-blue-500');
+            }
+        }
+        
+        function resetGame() {
+            clearInterval(gameState.spawnInterval);
+            clearInterval(gameState.timer);
+            
+            const heroContainer = document.getElementById('hero-container');
+            while(heroContainer.firstChild) {
+                heroContainer.removeChild(heroContainer.firstChild);
+            }
+            
+            gameState.heroes = [];
+            gameState.currentFloor = 0;
+            gameState.isPaused = false;
+            
+            document.getElementById('current-floor').textContent = '0';
+            document.getElementById('hero-count').textContent = '0';
+            
+            initGame();
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
